@@ -38,6 +38,7 @@ public class MainActivity extends Activity {
     private final static int TWO_HOURS = 2 * ONE_HOUR;
     private TextToSpeech tts;
     private PitStopClient pitStopClient;
+    private DatabaseHandler db;
     private CrashStatsClient crashStatsClient;
     private ListView listView;
 
@@ -332,6 +333,8 @@ public class MainActivity extends Activity {
 
         // Get how many crashes have been nearby in the last 5 years
         crashStatsClient = new CrashStatsClient();
+
+        db=new DatabaseHandler(getApplicationContext());
 
         refreshData();
 

@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/Revive.iml" filepath="$PROJECT_DIR$/Revive.iml" />
       <module fileurl="file://$PROJECT_DIR$/revive/revive.iml" filepath="$PROJECT_DIR$/revive/revive.iml" />
+      <module fileurl="file://$PROJECT_DIR$/revive-survive.iml" filepath="$PROJECT_DIR$/revive-survive.iml" />
     </modules>
   </component>
 </project>
