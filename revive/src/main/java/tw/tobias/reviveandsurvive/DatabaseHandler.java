@@ -1,6 +1,7 @@
 package tw.tobias.reviveandsurvive;
 
 import android.content.Context;
+import android.content.res.AssetManager;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -13,6 +14,8 @@ import java.util.*;
 
 import jsqlite.*;
 
+import android.content.res.AssetManager;
+import android.os.AsyncTask;
 import android.util.Log;
 
 /**
@@ -22,8 +25,11 @@ public class DatabaseHandler {
     private Database db;
     private static final String TAG = "DatabaseHandler";
 
+    AssetManager am;
 
     DatabaseHandler(Context c) {
+        am=c.getAssets();
+
         try {
 
             File spatialDbFile = new File(c.getFilesDir(), "revive.sqlite");
@@ -43,7 +49,11 @@ public class DatabaseHandler {
             if(!createDB(c,exists)) {
                 throw new RuntimeException();
             }
+            loadFiles();
+
         } catch (jsqlite.Exception e) {
+            e.printStackTrace();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -116,7 +126,79 @@ public class DatabaseHandler {
         }
         return false;
     }
-    private void loadFiles(){
+    private void loadFiles() throws IOException, jsqlite.Exception {
+        LinkedList<String> processed=new LinkedList();
+        Stmt create3=db.prepare("select filename from IMPORT_LOG;");
+        while(create3.step()) {
+            processed.add(create3.column_string(0));
+        }
+
+        String[] res = am.list("csv");
+        for (int i = 0; i < res.length; i++) {
+            if (!processed.contains(res[i])) {
+                Log.d(TAG, "loading from: " + res[i]);
+                new loadCsv().execute(res[i]);
+            }
+            else{
+                Log.d(TAG, res[i]+"already loaded");
+            }
+        }
+    }
+
+    private void load(String file) throws IOException,jsqlite.Exception {
+        Log.d(TAG, "Loading file: "+file);
+        InputStream in = am.open("csv/" + file);
+        BufferedReader br = new BufferedReader(new InputStreamReader(in));
+        String line = br.readLine();
+        Stmt stmt01 = db.prepare("insert into ALL_DATA(TYPE,NAME,GEOM) values (?,?,ST_GeomFromText(?));");
+
+        while (line != null) {
+
+
+            StringTokenizer st = new StringTokenizer(line, "|");
+            int index1=line.indexOf('|');
+            int id=Integer.parseInt(line.substring(0, index1));
+            int index2=line.indexOf('|',index1+1);
+            String name=line.substring(index1+1,index2);
+            String geom=line.substring(index2+1,line.length());
+
+
+/*                    Log.d(TAG, "token1 "+st.nextToken());
+                    Log.d(TAG, "token2 "+st.nextToken());
+                    Log.d(TAG, "token3 "+st.nextToken());
+*/
+
+            stmt01.bind(1, id);
+            stmt01.bind(2, name);
+            stmt01.bind(3, geom);
+            stmt01.step();
+            stmt01.reset();
+            line = br.readLine();
+        }
+        stmt01.close();
+        Stmt stmt02 = db.prepare("insert into IMPORT_LOG(filename) values (?);");
+        stmt02.bind(1,file);
+        stmt02.step();
+        stmt02.close();
+
+        Log.d(TAG, "Finished loading file: "+file);
+    }
+
+    private class loadCsv extends AsyncTask<String, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(String... strings) {
+            try {
+                for(int i=0;i<strings.length;i++) {
+                    load(strings[i]);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (jsqlite.Exception e) {
+                e.printStackTrace();
+            }
+            return Boolean.TRUE;
+        }
 
     }
+
 }
